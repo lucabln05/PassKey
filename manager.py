@@ -1,5 +1,6 @@
 import tkinter as tk 
 from tkinter import ttk
+import webbrowser
 
 #local import
 
@@ -32,6 +33,7 @@ class gui():
 
         gui.login_gui.salt_entry = tk.Entry(gui.login_gui.frame, width=30)
         gui.login_gui.salt_entry.grid(row=0, column=1, padx=10, pady=5)
+
 
         password_label = tk.Label(gui.login_gui.frame, text="Password:")
         password_label.grid(row=1, column=0, padx=10, pady=5)
@@ -117,7 +119,13 @@ class gui():
 
         try:
             data = db.decrypt_db(safe_password, safe_salt)
+             
+            #search bar above the treeview
+            search_bar = tk.Entry(gui.safe_gui.safe, width=30)
+            search_bar.pack(side=tk.TOP, fill=tk.X)
+            search_bar.bind("<KeyRelease>", lambda e: search_tree(e, tree, data, 0))
 
+    
             tree = tk.ttk.Treeview(gui.safe_gui.safe, columns=("Service Name", "Username"))
            
             tree.pack(side=tk.LEFT, fill=tk.Y)
@@ -137,6 +145,13 @@ class gui():
             for i, item in enumerate(data):
                 tree.insert("", "end", values=(item[0], item[1], item[2], item[3], item[4]))
             
+            # Create a search box
+            search_frame = tk.Frame(gui.safe_gui.safe, pady=10)
+            search_frame.pack(side=tk.TOP)
+
+            search_label = tk.Label(search_frame, text="Search:")
+            search_label.pack
+            
             def on_double_click(event):
                 item = tree.selection()[0]
                 password = tree.item(item, "values")[2]
@@ -144,6 +159,7 @@ class gui():
                 gui.safe_gui.safe.clipboard_append(password)
             
             def on_one_click(event):
+
                 # diplay the content of the selected row on the right side with a label
                 item = tree.selection()[0]
                 service_name = tree.item(item, "values")[0]
@@ -165,27 +181,62 @@ class gui():
                 # create the entries
                 service_name_entry = tk.Entry(frame, width=30)
                 service_name_entry.grid(row=0, column=1, padx=10, pady=5)
+
                 username_entry = tk.Entry(frame, width=30)
-
                 username_entry.grid(row=1, column=1, padx=10, pady=5)
-                password_entry = tk.Entry(frame, width=30)
-                password_entry.grid(row=2, column=1, padx=10, pady=5)
-                url_entry = tk.Entry(frame, width=30)
 
+                #display password in **** if the user clicks on the password entry reveal the password and kopie it to the clipboard
+                password_entry = tk.Entry(frame, width=30, show="*")
+                password_entry.grid(row=2, column=1, padx=10, pady=5)
+                
+
+               
+                password_entry.bind("<Button-1>", lambda e: on_copy_password(e))
+                def on_copy_password(event):
+                    #zeige nun dem nutzer das das password kopiert wurde rechts neben dem password entry mit einem label
+                    password_copied_label = tk.Label(frame, text="Password copied to clipboard", fg="green")
+                    password_copied_label.grid(row=2, column=2, padx=10, pady=5)
+                    password_copied_label.after(1000, lambda: password_copied_label.grid_forget())
+                    on_double_click(event)
+
+                
+                # make clickable url
+                url_entry = tk.Label(frame, text=url, fg="#282c34", cursor="hand2")
                 url_entry.grid(row=3, column=1, padx=10, pady=5)
+                url_entry.bind("<Button-1>", lambda e: webbrowser.open(url))
+                
                 notes_entry = tk.Entry(frame, width=30)
                 notes_entry.grid(row=4, column=1, padx=10, pady=5)
                 # insert the values
                 service_name_entry.insert(0, service_name)
                 username_entry.insert(0, username)
                 password_entry.insert(0, password)
-                url_entry.insert(0, url)
                 notes_entry.insert(0, notes)
 
+            def search_tree(event, tree, data, col):
+                 
+                search_term = search_bar.get()
+                tree.delete(*tree.get_children())
+                for item in data:
+                    if search_term.lower() in item[col].lower():
+                        tree.insert("", "end", values=(item[0], item[1], item[2], item[3], item[4]))
             
+            def delete_row(event):
+                item = tree.selection()[0]
+                service_name = tree.item(item, "values")[0]
+                username = tree.item(item, "values")[1]
+                print(service_name, username)
+                # delete the row from the database
+                if db.delete_object(service_name, username, safe_password, safe_salt):
+                    tree.delete(item)
+                else:
+                    print("Error deleting row")
+
 
             tree.bind("<<TreeviewSelect>>", on_one_click)            
             tree.bind("<Double-1>", on_double_click)
+            tree.bind("<Button-3>", delete_row)
+
             tree.pack()
 
         except Exception as e:

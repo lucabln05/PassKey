@@ -1,6 +1,5 @@
 import sys
-sys.path.append('./crypto')
-from otp import *
+from crypto.otp import *
 
 
 

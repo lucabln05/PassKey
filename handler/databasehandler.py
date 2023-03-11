@@ -5,7 +5,7 @@ import sqlite3
 import handler.cryptohandler as ch
 
 
-safe_path = "safe/safe.pm"
+safe_path = "safe/safe.db"
 
 
 class check():
@@ -27,7 +27,9 @@ class check():
             db_content = ch.content_decrypt(db_content, password, salt)
         
             db_content[0] = db_content[0][2:-1]
-            return True
+            if db_content[0] == "decrypteddecrypteddecrypteddecrypted":
+                return True
+            return False
             
         
         except Exception as e:
@@ -35,8 +37,11 @@ class check():
 
 def create_db(password) -> bool:
     if len(password) > 8:
-        db = open(safe_path, "wb")
-        db.close()
+        if os.path.exists(safe_path):
+            return False 
+        else:
+            db = open(safe_path, "wb")
+            db.close()
         
         try: 
             con = sqlite3.connect(safe_path)
@@ -110,3 +115,18 @@ def decrypt_db(password, salt) -> str:
     except Exception as e:
         return False
     
+def delete_object(object, username, password, salt) -> bool:
+    try:
+        con = sqlite3.connect(safe_path)
+        db = con.cursor()
+        #encrypt object and username
+        content = object, username
+        content = ch.content_encrypt(content, password, salt)
+    
+        db.execute("DELETE FROM safe WHERE objectname = (?) AND username = (?)", (content[0], content[1]))
+        con.commit()
+        con.close()
+        return True
+    except Exception as e:
+        return False
+
