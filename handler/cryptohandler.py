@@ -19,7 +19,7 @@ def first_time_encrypt(database_content, password) -> str:
         key = str(random_salt) + str(password)
 
         encrypt_content = [str(opt_encrypt(column, key)) for column in database_content]
-        return encrypt_content
+        return encrypt_content, password, random_salt
     except Exception as e:
         return False
 
